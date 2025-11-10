@@ -3,7 +3,7 @@
 # All default values are included - just run: docker-compose -f docker-compose.yml up -d
 #
 # Quick Start:
-# 1. docker-compose -f docker-compose.brokr.yml up -d
+# 1. docker-compose -f docker-compose.yml up -d
 # 2. Access at http://localhost:8080
 #
 # Default credentials (from initial data migration):
