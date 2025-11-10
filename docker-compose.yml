@@ -1,6 +1,6 @@
 # Brokr Platform - Quick Start Docker Compose
 # This file is for developers to quickly test the platform
-# All default values are included - just run: docker-compose -f docker-compose.brokr.yml up -d
+# All default values are included - just run: docker-compose -f docker-compose.yml up -d
 #
 # Quick Start:
 # 1. docker-compose -f docker-compose.brokr.yml up -d
