@@ -7,11 +7,9 @@
 # 2. Access at http://localhost:8080
 #
 # Default credentials (from initial data migration):
-# - SUPER_ADMIN: admin / admin123
-# - ORG_ADMIN: orgadmin / orgadmin123
-# - VIEWER: developer / developer123
-
-version: '3.9'
+# - SUPER_ADMIN: admin@brokr.io / admin123
+# - ORG_ADMIN: orgadmin@brokr.io / orgadmin123
+# - VIEWER: developer@brokr.io / developer123
 
 services:
   # PostgreSQL Database
@@ -24,8 +22,8 @@ services:
       POSTGRES_PASSWORD: changeme
     ports:
       - "5432:5432"
-    tmpfs:
-      - /var/lib/postgresql/data
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - brokr-network
     restart: unless-stopped
@@ -36,6 +34,9 @@ services:
       retries: 5
 
   # Kafka Broker 1 (KRaft mode)
+  # NOTE: These Kafka services are OPTIONAL - only for testing/demo purposes
+  # The Brokr platform connects to EXTERNAL Kafka clusters via bootstrap servers
+  # configured by admins in the UI. This Kafka cluster is just for local testing.
   kafka-broker-1:
     image: confluentinc/cp-kafka:8.1.0
     container_name: brokr-kafka-1
@@ -54,12 +55,12 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_MIN_INSYNC_REPLICAS: 2
-      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
       CLUSTER_ID: '0K1NOVcqSoeQgUQc97lpzg'
-    tmpfs:
-      - /var/lib/kafka/data
+    volumes:
+      - kafka_data_1:/var/lib/kafka/data
     networks:
       - brokr-network
     restart: unless-stopped
@@ -70,6 +71,7 @@ services:
       retries: 10
       start_period: 30s
 
+  # Kafka Broker 2
   kafka-broker-2:
     image: confluentinc/cp-kafka:8.1.0
     container_name: brokr-kafka-2
@@ -85,13 +87,15 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_MIN_INSYNC_REPLICAS: 2
       CLUSTER_ID: '0K1NOVcqSoeQgUQc97lpzg'
-    tmpfs:
-      - /var/lib/kafka/data
+    volumes:
+      - kafka_data_2:/var/lib/kafka/data
     networks:
       - brokr-network
     restart: unless-stopped
@@ -102,6 +106,7 @@ services:
       retries: 10
       start_period: 30s
 
+  # Kafka Broker 3
   kafka-broker-3:
     image: confluentinc/cp-kafka:8.1.0
     container_name: brokr-kafka-3
@@ -117,13 +122,15 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
       KAFKA_DEFAULT_REPLICATION_FACTOR: 3
       KAFKA_MIN_INSYNC_REPLICAS: 2
       CLUSTER_ID: '0K1NOVcqSoeQgUQc97lpzg'
-    tmpfs:
-      - /var/lib/kafka/data
+    volumes:
+      - kafka_data_3:/var/lib/kafka/data
     networks:
       - brokr-network
     restart: unless-stopped
@@ -134,26 +141,38 @@ services:
       retries: 10
       start_period: 30s
 
+  # Brokr Platform Application
   brokr-app:
     image: nightslayer/brokr-platform:latest
     container_name: brokr-app
     ports:
       - "8080:8080"
     environment:
+      # Database Configuration
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/brokr
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: changeme
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_FLYWAY_ENABLED: "true"
+
+      # JWT Configuration (512-bit secure random secret for HS512, base64-encoded)
       JWT_SECRET: XB0922J6WcWbXAgtFvmmebkfQUVMcjOqX4oag/xEHNY5E1MTFLQ2KSbqL52fmoGLHYCkkkJfzmGBB4vn6yYHlA==
       JWT_EXPIRATION: 86400
+
+      # CORS Configuration (Default works for same-origin)
       CORS_ALLOWED_ORIGINS: http://localhost:8080
+
+      # Application Configuration
       SPRING_PROFILES_ACTIVE: production
+
+      # Logging
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_IO_BROKR: INFO
     depends_on:
       postgres:
         condition: service_healthy
+      # NOTE: Kafka services are NOT required - Brokr platform connects to external Kafka clusters
+      # Kafka services above are only for local testing/demo purposes
     networks:
       - brokr-network
     restart: unless-stopped
@@ -167,3 +186,14 @@ services:
 networks:
   brokr-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  kafka_data_1:
+    driver: local
+  kafka_data_2:
+    driver: local
+  kafka_data_3:
+    driver: local
+    
